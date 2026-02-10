@@ -24,46 +24,54 @@ pressure = st.sidebar.number_input(
     value=918.0
 )
 
-# preduction
-input_df = pd.DataFrame([[
-    pressure, 20.0, 180.0, wind_speed * 0.7, 180.0, wind_speed, humidity, humidity_3pm
-]], columns=[
-    'air_pressure_9am', 'air_temp_9am', 'avg_wind_direction_9am', 
-    'avg_wind_speed_9am', 'max_wind_direction_9am', 'max_wind_speed_9am', 
-    'relative_humidity_9am', 'relative_humidity_3pm'
-])
+# predict button
+predict_btn = st.sidebar.button("Predict Weather")
 
-prediction = model.predict(input_df)
+# only run the prediction if the button is clicked
+if predict_btn:
+    # preduction
+    input_df = pd.DataFrame([[
+        pressure, 20.0, 180.0, wind_speed * 0.7, 180.0, wind_speed, humidity, humidity_3pm
+    ]], columns=[
+        'air_pressure_9am', 'air_temp_9am', 'avg_wind_direction_9am', 
+        'avg_wind_speed_9am', 'max_wind_direction_9am', 'max_wind_speed_9am', 
+        'relative_humidity_9am', 'relative_humidity_3pm'
+    ])
 
-# peak rain intensity
-hours = [f"{h:02d}:00" for h in range(24)]
-timeline_values = []
+    prediction = model.predict(input_df)
 
-# if it predicts rain, intensity peaks at 0.8, else it stays low at 0.1
-base_level = 0.8 if prediction[0] == 1 else 0.1
+    # peak rain intensity
+    hours = [f"{h:02d}:00" for h in range(24)]
+    timeline_values = []
 
-for h in range(24):
-    dist_from_peak = abs(h - 15)
-    intensity = base_level * (1 - (dist_from_peak / 15))
-    timeline_values.append(max(0, intensity)) # Ensure no negative numbers
+    # if it predicts rain, intensity peaks at 0.8, else it stays low at 0.1
+    base_level = 0.8 if prediction[0] == 1 else 0.1
 
-chart_data = pd.DataFrame({
-    'Time of Day': hours,
-    'Rain Intensity': timeline_values,
-    'Scale_Max': [1.0] * 24  
-}).set_index('Time of Day')
+    for h in range(24):
+        dist_from_peak = abs(h - 15)
+        intensity = base_level * (1 - (dist_from_peak / 15))
+        timeline_values.append(max(0, intensity)) # Ensure no negative numbers
 
-# display results
-if prediction[0] == 1:
-    st.error("### ☔ Rain is Likely Today")
-    st.write("Potential disruptions in outdoor activities.")
+    chart_data = pd.DataFrame({
+        'Time of Day': hours,
+        'Rain Intensity': timeline_values,
+        'Scale_Max': [1.0] * 24  
+    }).set_index('Time of Day')
+
+    # display results
+    if prediction[0] == 1:
+        st.error("### ☔ Rain is Likely Today")
+        st.write("Potential disruptions in outdoor activities.")
+    else:
+        st.success("### ☀️ Clear Skies Expected")
+        st.write("Conditions are stable. Low probability of precipitation.")
+
+    # line chart for rain intensity
+    st.markdown("#### Predicted Rain Intensity Timeline")
+    st.line_chart(chart_data[['Rain Intensity', 'Scale_Max']])
+
 else:
-    st.success("### ☀️ Clear Skies Expected")
-    st.write("Conditions are stable. Low probability of precipitation.")
-
-# line chart for rain intensity
-st.markdown("#### Predicted Rain Intensity Timeline")
-st.line_chart(chart_data[['Rain Intensity', 'Scale_Max']])
+    st.info("Please adjust the atmospheric controls and click 'Predict Weather' to generate a forecast.")
 
 # tips section
 st.divider()
@@ -73,4 +81,3 @@ st.info("""
 - **Air Pressure:** Lower pressure often signals an approaching storm.
 - **Wind Speed:** High wind gusts can increase the chance of rain.
 """)
-
